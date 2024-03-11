@@ -9,6 +9,7 @@ kubeconfig_location: /tmp # A location on the filesystem to store kubeconfigs.
 default_binary_directory: /usr/local/bin # Change if your OS uses another directory.
 
 ## Shared cluster vars
+delete_cluster: false
 cluster_type: #mgmt|workload
 cluster_name: "{{ inventory_hostname_short }}"
 cluster_plan: dev
@@ -43,7 +44,6 @@ ipam_ip_pool_gateway:
 ipam_ip_pool_addresses: []
 ipam_ip_pool_subnet_prefix:
 ipam_nameservers: # Comma separated list
-delete_cluster: false
 
 # Mgmt cluster vars
 auth_enabled: false

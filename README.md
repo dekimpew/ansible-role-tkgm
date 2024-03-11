@@ -14,7 +14,15 @@ _Important:_ This role is best effort and is not officially backed by VMware by 
 - If you deploy an airgapped instance, this role assumes you already have all images and tanzu plugins in the local repository.
 - Currently the role only supports LDAPS and not OIDC (coming soon).
 - Upgrading clusters is not possible yet.
+- The role assumes you are running this on a host that is able to reach all cluster networks. ie: The tanzu jumpbox/ admin mgmt server.
 
+## Using the role
+1. Specify the cluster FQDN in your inventory.
+2. Set the appropriate variables in your host and/or group vars.
+3. Create a playbook that references this role and inventory. Disable fact gathering for hosts!
+4. run the playbook against the TKG host(s).
+
+See [This walkthrough](Walkthrough.md) for a detailed example and walkthrough of how I use this role.
 
 ## Variables
 There are quite a lot of variables for this role. Below is the list with what they mean.
@@ -24,14 +32,16 @@ Most of these variables are directly linked to the TKG configuration variables f
 
 ```yaml
 tanzu_version: v2.5.0 # Check the Release notes for correct versions.
-tanzu_cli_version: v1.1.0 # Check the Release notes for correct versions.
-package_version: v2024.2.1 # Check the Release notes for correct versions.
+tanzu_cli_version: # This is automatically filled in from the version matrix in the vars directory.
+package_version:  # This is automatically filled in from the version matrix in the vars directory.
 kubeconfig_location: /tmp # A location on the filesystem to store kubeconfigs.
+default_binary_directory: /usr/local/bin # Change if your OS uses another directory.
 ```
 Below are default variables that are applicable for both management and workload clusters. You probably want to  overwrite these in either group or host vars depending on your architecture.  
 For example: Workload clusters on another vcenter/datacenter than the management cluster.
 ```yaml
 ## Shared cluster vars
+delete_cluster: false # Keep this at false and overwrite with extra-vars to true to delete a cluster.
 cluster_type: # is either: mgmt|workload
 cluster_name: "{{ inventory_hostname_short }}" # the cluster FQDN in your hosts file.
 cluster_plan: dev # Either dev (1CP, 1 worker) or prod (3 CP, 3 workers ).
@@ -45,7 +55,7 @@ vsphere_datacenter: # vSphere datacenter.
 vsphere_resource_pool: # vSphere RP.
 vsphere_datastore: # vSphere datastore.
 vsphere_folder: # vSphere folder where the cluster nodes will be deployed in.
-vsphere_network: 
+vsphere_network: # The vSphere network your cluster nodes will attach to.
 vsphere_tls_thumbprint: # The TLS thumbprint of your vCenter instance.
 vsphere_insecure: false
 vsphere_ssh_authorized_key: # a dedicated SSH public key that will be injected into the capv user on every node for troubleshooting.
@@ -58,7 +68,7 @@ worker_machine_count: 1 # Default worker node count.
 vsphere_worker_num_cpus: 2 # CPU count for all worker nodes.
 vsphere_worker_disk_gib: 20 # Disk size for all worker nodes.
 vsphere_worker_mem_mib: 4096 # MEmory size for all worker nodes.
-tkg_custom_image_repository: # When deploying in an airgapped, provide the url of the repo. 
+tkg_custom_image_repository: # When deploying in an airgapped, provide the repo URL (ie: myharbor.mydomain.com/tkg). 
 tkg_custom_image_repository_skip_tls_verify: false # If using selfsigned certs on your registry, you can ignore the certs here.
 tkg_custom_image_repository_ca_certificate: # Provide a base64 encoded PEM certificate of your private CA that signed your registry.
 ipam_enabled: false # Enable or disable node IPAM to replace DHCP for nodes.
@@ -100,15 +110,15 @@ avi_service_engine_group:
 These are some specific workload cluster variables, including the packages.
 ```yaml
 # Workload cluster vars
-mgmt_cluster_name: ""
-kubevip_enabled: false
+mgmt_cluster_name: "" # Define the name of the mgmt cluster that manages this referenced workload cluster.
+kubevip_enabled: false # Enable or disable kubevip as Loadbalancer provider.
 kubevip_range: [] # List Format: 10.0.0.1-10.0.0.255
 cluster_namespace: "default"
-cluster_ipam_type: InClusterIPPool # Change to GlobalInClusterIPPool for a global pool
+cluster_ipam_type: InClusterIPPool # Change to GlobalInClusterIPPool when you specified a global pool
 
 # Packages vars
 packages_namespace: "kapp-packages"
-packages: []
+packages: [] # The role dynamically grabs the last version of the package. Overwrite as below code in comment to choose a specific version.
 #  - name: cert-manager
 #    version: 1.12.2+vmware.1-tkg.1
 #    values_file: False
