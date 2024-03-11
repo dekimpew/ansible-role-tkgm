@@ -1,0 +1,56 @@
+---
+- name: Check if cluster {{ cluster_name }} already exists
+  ansible.builtin.set_fact:
+    running_cluster: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, api_version='cluster.x-k8s.io/v1beta1', kind='Cluster', namespace=cluster_namespace, resource_name=cluster_name) | json_query('[0].metadata.name') }}"
+
+- name: Cluster creation block
+  when: running_cluster == ""
+  block:
+  - name: Set the tanzu version
+    ansible.builtin.set_fact:
+      tkr_name: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, api_version='run.tanzu.vmware.com/v1alpha3', kind='tkr') | json_query('[-1].metadata.name')}}"
+      tkr_version: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, api_version='run.tanzu.vmware.com/v1alpha3', kind='tkr') | json_query('[-1].spec.version')}}"
+
+  - name: Make sure the cluster namespace exists
+    kubernetes.core.k8s:
+      name: "{{ cluster_namespace }}"
+      api_version: v1
+      kind: Namespace
+      state: present
+      kubeconfig: "{{ mgmt_cluster_kubeconfig_location }}"
+    register: cluster_namespace_created
+
+  - name: Classy cluster block
+    block:
+    - name: Template the workload cluster yaml for {{ cluster_name }}
+      ansible.builtin.template: 
+        src: workload_cluster.j2
+        dest: "{{ tempdir.path }}/{{ cluster_name }}.yml"
+        mode: '0644'
+
+    - name: Deploy the cluster IPAM configuration
+      when: ipam_enabled
+      kubernetes.core.k8s:
+        apply: yes
+        state: present
+        template: ippool.j2
+        kubeconfig: "{{ mgmt_cluster_kubeconfig_location }}"
+
+    - name: Create workload cluster
+      ansible.builtin.command: tanzu cluster create -f {{ tempdir.path }}/{{ cluster_name }}.yml
+
+  - name: Check whether cluster {{ cluster_name }} has succesfully deployed after 5 extra minutes
+    ansible.builtin.set_fact:
+      cluster_state: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, api_version='cluster.x-k8s.io/v1beta1', kind='Cluster',namespace=cluster_namespace, resource_name=cluster_name )|json_query('[0].status.controlPlaneReady')}}"
+
+- name: Cluster kubeconfig block
+  block:
+  - name: Grab the workload cluster kubeconfig from the mgmt cluster
+    ansible.builtin.set_fact:
+      workload_cluster_kubeconfig: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, kind='Secret',namespace=cluster_namespace, resource_name=cluster_name + '-kubeconfig' )|json_query('[0].data.value') }}"
+
+  - name: Write cluster kubeconfig to the kubeconfig dir
+    ansible.builtin.copy: 
+      content: "{{ workload_cluster_kubeconfig |b64decode }}"
+      dest: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+      mode: '0644'

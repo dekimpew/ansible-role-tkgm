@@ -1,0 +1,170 @@
+---
+- name: Import the Tanzu versions variables
+  ansible.builtin.include_vars:
+    file: version_matrix.yml
+
+- name: Set vars
+  ansible.builtin.set_fact:
+    tanzu_cli_version: "{{ tanzu_versions | selectattr('tkg','==', tanzu_version) | map(attribute='cli') | first }}"
+    tanzu_package_version: "{{ tanzu_versions | selectattr('tkg','==', tanzu_version) | map(attribute='packages') | first }}"
+    
+- name: Install required pip modules
+  ansible.builtin.pip:
+    name: "{{ item }}"
+  loop: 
+    - kubernetes
+    - jmespath
+    - dnspython
+    - netaddr
+
+- name: Set the conntrack sysctl value
+  ansible.posix.sysctl:
+    name: net.netfilter.nf_conntrack_max
+    value: 131072
+    state: present
+  become: true
+
+- name: Stat the Docker daemon file
+  ansible.builtin.stat:
+    path: "/etc/docker/daemon.json"
+  register: docker_daemon_stat
+
+- name: Adapt the docker daemon file 
+  when: docker_daemon_stat.stat.exists is true
+  block:
+  - name: Read Docker daemon file
+    ansible.builtin.set_fact:
+      dockerdaemondata: "{{ lookup('file', '/etc/docker/daemon.json') | from_json }}"
+    
+  - name: Add cgroupdriver to the config file
+    ansible.builtin.set_fact:
+      dockerdaemondata: "{{ dockerdaemondata | default({}) | combine ({ 'exec-opts': ['native.cgroupdriver=systemd'] }) }}"
+
+  - name: Write back to the docker directory
+    ansible.builtin.copy: 
+      content: "{{ dockerdaemondata | to_nice_json }}" 
+      dest: /etc/docker/daemon.json
+    register: docker_daemon_state
+    become: true
+
+- name: Copy the base docker daemon file
+  when: docker_daemon_stat.stat.exists is false
+  ansible.builtin.copy:
+    src: daemon.json
+    dest: /etc/docker/daemon.json
+  register: docker_daemon_state
+  become: true
+
+- name: Bounce the docker service
+  when: docker_daemon_state.changed
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+  become: true
+
+- name: Check whether Tanzu CLI is installed
+  ansible.builtin.command: which tanzu
+  failed_when: false
+  changed_when: false
+  register: tanzu_cli_present
+
+- name: Check the current Tanzu CLI version
+  when: tanzu_cli_present.rc == 0
+  ansible.builtin.command: tanzu version
+  changed_when: false
+  register: tanzu_version_output
+
+- name: set current Tanzu CLI version
+  when: tanzu_cli_present.rc == 0
+  ansible.builtin.set_fact:
+    current_tanzu_cli_version: "{{ tanzu_version_output.stdout_lines[0].split(': ')[1] }}"
+
+- name: Download and install the required Tanzu CLI binary
+  when: tanzu_cli_present.rc == 1 or current_tanzu_cli_version != tanzu_cli_version
+  block:
+    - name: Download Tanzu CLI Binary from Github
+      ansible.builtin.get_url:
+        url: https://github.com/vmware-tanzu/tanzu-cli/releases/download/{{ tanzu_cli_version }}/tanzu-cli-linux-amd64.tar.gz
+        dest: /tmp/tanzu-cli-linux-amd64.tar.gz
+
+    - name: Extract the binary 
+      ansible.builtin.unarchive:
+        src: /tmp/tanzu-cli-linux-amd64.tar.gz
+        dest: "/tmp/"
+
+    - name: Move the extracted binary
+      ansible.builtin.copy:
+        src: /tmp/{{ tanzu_cli_version }}/tanzu-cli-linux_amd64
+        dest: "{{ default_binary_directory }}/tanzu"
+      become: true
+
+- name: Create temporary working directory
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: etks-
+  register: tempdir
+
+- name: Declare the temp directory
+  debug:
+    msg: "The current working temporary directory is: {{ tempdir.path }}"
+
+- name: Delete the Tanzu CLI Compatibility file
+  ansible.builtin.file:
+    state: absent
+    path: ~/.config/tanzu/tkg/compatibility/tkg-compatibility.yaml
+
+- name: Accept the tanzu EULA
+  ansible.builtin.command: tanzu config eula accept
+
+- name: Disable CEIP
+  ansible.builtin.command: tanzu ceip-participation set false
+
+- name: Init the tanzu cli
+  ansible.builtin.command: tanzu init
+
+- name: Setting airgapped variables
+  when: tkg_custom_image_repository != None
+  block:
+    - name: Dump the local repository CA into a file
+      copy:
+        content: "{{ tkg_custom_image_repository_ca_certificate | b64decode }}"
+        dest: "{{ tempdir.path }}/ca.crt"
+
+    - name: Grab the current tanzu cli cert config state
+      ansible.builtin.command: tanzu config cert list -o json
+      register: tanzu_cert_output
+
+    - name: Add the local registry CA certificate to tanzu cli
+      when: not tanzu_cert_output.stdout | from_json | json_query(json_query)
+      ansible.builtin.command: "tanzu config cert add --host {{ tkg_custom_image_repository.split('/')[0] }} --ca-certificate {{ tempdir.path }}/ca.crt"
+      vars:
+        json_query: "[?host=='{{ tkg_custom_image_repository.split('/')[0] }}'].host"
+
+    - name: Update the local registry CA certificate in tanzu cli
+      when: tanzu_cert_output.stdout | from_json | json_query(json_query)
+      ansible.builtin.command: "tanzu config cert update {{ tkg_custom_image_repository.split('/')[0] }} --ca-certificate {{ tempdir.path }}/ca.crt"
+      vars:
+        json_query: "[?host=='{{ tkg_custom_image_repository.split('/')[0] }}'].host"
+
+    - name: Update the plugin source for tanzu plugins
+      ansible.builtin.command: "tanzu plugin source update default --uri {{ tkg_custom_image_repository.split('/')[0] }}/tanzu_cli/plugin-inventory:latest"
+
+    - name: Set custom repo in tanzu cli
+      ansible.builtin.command: tanzu config set env.TKG_CUSTOM_IMAGE_REPOSITORY {{ tkg_custom_image_repository }}
+
+    - name: Set custom repo CA in tanzu cli
+      ansible.builtin.command: tanzu config set env.TKG_CUSTOM_IMAGE_REPOSITORY_CA_CERTIFICATE {{ tkg_custom_image_repository_ca_certificate }}
+  rescue:
+    - name: debug failed task
+      ansible.builtin.fail:
+        msg: "Task '{{ ansible_failed_task.name }}' failed with: '{{ ansible_failed_result.stderr }}'"
+    
+- name: Install the default plugin group
+  ansible.builtin.command: "tanzu plugin install --group vmware-tkg/default:{{ tanzu_version }}"
+
+- name: Reset private registry variable in the tanzu cli
+  when: tkg_custom_image_repository == None
+  ansible.builtin.command: tanzu config unset env.TKG_CUSTOM_IMAGE_REPOSITORY
+
+- name: Enable one-step cluster creation
+  ansible.builtin.command: tanzu config set features.cluster.auto-apply-generated-clusterclass-based-configuration true

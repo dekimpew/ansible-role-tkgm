@@ -1,0 +1,32 @@
+---
+- name: Package deploy block
+  block:
+  - name: Grab the latest version for the package if it's not manually defined.
+    when: item.version is not defined  or item.version == ""
+    ansible.builtin.set_fact:
+      required_version: "{{ available_packages.stdout | from_json | json_query(query) | community.general.version_sort | last }}"
+    vars:
+      query: "items[?spec.refName=='{{ item.name }}.tanzu.vmware.com'].spec.version"
+
+  - name: Overwrite the required version with the one you defined yourself.
+    when: item.version is defined
+    ansible.builtin.set_fact:
+      required_version: "{{ item.version }}"
+
+  - name: Copy the values file if required for the package
+    when: item.values_file
+    ansible.builtin.template: 
+      src: "{{ item.name }}-values.j2"
+      dest: "{{ tempdir.path }}/{{ item.name }}-values.yml"
+      mode: 0644
+
+  - name: install the latest package version (without values file)
+    when: not item.values_file
+    ansible.builtin.command: tanzu package install {{ item.name }} -p {{ item.name }}.tanzu.vmware.com --namespace {{ packages_namespace }} --version {{ required_version }} --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+
+
+  - name: install the latest package version (with values file)
+    when: item.values_file
+    ansible.builtin.command: tanzu package install {{ item.name }} -p {{ item.name }}.tanzu.vmware.com --namespace {{ packages_namespace }} --version {{ required_version }} --values-file {{ tempdir.path }}/{{ item.name }}-values.yml --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+  delegate_to: localhost
+  tags: ["tkg", "tkg_packages"]

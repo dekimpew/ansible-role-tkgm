@@ -1,0 +1,59 @@
+CLUSTER_NAME: {{ cluster_name }}
+CLUSTER_PLAN: {{ cluster_plan }}
+OS_NAME: {{ os_name }}
+INFRASTRUCTURE_PROVIDER: vsphere
+ENABLE_AUDIT_LOGGING: true
+CLUSTER_CIDR: {{ cluster_cidr }}
+SERVICE_CIDR: {{ service_cidr }}
+VSPHERE_SERVER: {{ vsphere_server }}
+VSPHERE_USERNAME: {{ vsphere_username }}
+VSPHERE_PASSWORD: {{ vsphere_password }}
+VSPHERE_DATACENTER: {{ vsphere_datacenter }}
+VSPHERE_RESOURCE_POOL: {{ vsphere_resource_pool }}
+VSPHERE_DATASTORE: {{ vsphere_datastore }}
+VSPHERE_FOLDER: {{ vsphere_folder }}
+VSPHERE_NETWORK: {{ vsphere_network }}
+VSPHERE_TLS_THUMBPRINT:  {{ vsphere_tls_thumbprint }}
+VSPHERE_INSECURE: {{ vsphere_insecure }}
+VSPHERE_SSH_AUTHORIZED_KEY: {{ vsphere_ssh_authorized_key }}
+VSPHERE_CONTROL_PLANE_ENDPOINT: {{ vsphere_control_plane_endpoint }}
+VSPHERE_CONTROL_PLANE_ENDPOINT_PORT: 6443
+CONTROL_PLANE_MACHINE_COUNT: {{ control_plane_machine_count }}
+VSPHERE_CONTROL_PLANE_NUM_CPUS: {{ vsphere_control_plane_num_cpus }}
+VSPHERE_CONTROL_PLANE_DISK_GIB: {{ vsphere_control_plane_disk_gib }}
+VSPHERE_CONTROL_PLANE_MEM_MIB: {{ vsphere_control_plane_mem_mib }}
+WORKER_MACHINE_COUNT: {{ worker_machine_count }}
+VSPHERE_WORKER_NUM_CPUS: {{ vsphere_worker_num_cpus }}
+VSPHERE_WORKER_DISK_GIB: {{ vsphere_worker_disk_gib }}
+VSPHERE_WORKER_MEM_MIB: {{ vsphere_worker_mem_mib }}
+DEPLOY_TKG_ON_VSPHERE7: true
+ENABLE_TKGS_ON_VSPHERE7: false
+
+#! Airgapped settings
+#! ------------------
+{% if tkg_custom_image_repository -%}
+TKG_CUSTOM_IMAGE_REPOSITORY:  {{ tkg_custom_image_repository}}
+TKG_CUSTOM_IMAGE_REPOSITORY_CA_CERTIFICATE:  {{ tkg_custom_image_repository_ca_certificate }}
+TKG_CUSTOM_IMAGE_REPOSITORY_SKIP_TLS_VERIFY: {{ tkg_custom_image_repository_skip_tls_verify }}
+{% endif -%}
+
+#! AVI Loadbalancer
+#! ----------------
+{% if avi_enabled -%}
+AVI_CONTROL_PLANE_HA_PROVIDER: "true"
+{% else -%}
+AVI_CONTROL_PLANE_HA_PROVIDER: "false"
+{% endif -%}
+{% if kubevip_enabled -%}
+KUBEVIP_LOADBALANCER_ENABLE: "true"
+KUBEVIP_LOADBALANCER_IP_RANGES: {{ kubevip_range|join(",") }}
+{% endif -%}
+
+#! Node IPAM
+#! ---------
+{% if ipam_enabled -%}
+NODE_IPAM_IP_POOL_KIND: {{ cluster_ipam_type }}
+NODE_IPAM_IP_POOL_NAME: {{ cluster_name }}-ippool
+CONTROL_PLANE_NODE_NAMESERVERS: {{ ipam_nameservers }}
+WORKER_NODE_NAMESERVERS: {{ ipam_nameservers }}
+{% endif -%}

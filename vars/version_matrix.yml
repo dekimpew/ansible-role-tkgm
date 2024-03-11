@@ -1,0 +1,7 @@
+tanzu_versions:
+- tkg: v2.5.0
+  cli: v1.1.0
+  packages: v2024.2.1
+- tkg: v2.4.1
+  cli: v1.1.0
+  packages: v2023.11.21

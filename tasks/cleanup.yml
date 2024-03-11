@@ -1,0 +1,6 @@
+---
+- name: Remove the temporary working directory
+  ansible.builtin.file:
+    path: "{{ tempdir.path }}"
+    state: absent
+  delegate_to: localhost

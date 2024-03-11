@@ -1,0 +1,12 @@
+---
+- name: Check if cluster {{ cluster_name }} already exists
+  ansible.builtin.set_fact:
+    running_cluster: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, api_version='cluster.x-k8s.io/v1beta1', kind='Cluster', namespace=cluster_namespace, resource_name=cluster_name) | json_query('[0].metadata.name') }}"
+
+- name: Delete workload cluster
+  ansible.builtin.command: tanzu cluster delete {{ cluster_name }} -y
+
+- name: Delete the workload cluster kubeconfig
+  ansible.builtin.file:
+    path: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+    state: absent

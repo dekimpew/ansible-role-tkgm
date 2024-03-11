@@ -1,0 +1,31 @@
+---
+- name: Include preparation tasks
+  ansible.builtin.import_tasks: prereq.yml
+  tags: always
+  delegate_to: localhost
+
+- name: Include mgmt cluster creation task
+  ansible.builtin.import_tasks: mgmt_cluster.yml
+  tags: ["tkg", "tkg_mgmt"]
+  when: cluster_type == "mgmt"
+  delegate_to: localhost
+
+- name: Include workload cluster tasks
+  ansible.builtin.import_tasks: workload_cluster.yml
+  tags: ["tkg", "tkg_workload"]
+  when: cluster_type == "workload"
+  delegate_to: localhost
+
+- name: Include packages repo task
+  ansible.builtin.import_tasks: packages.yml
+  tags: ["tkg", "tkg_packages"]
+  when: 
+    - cluster_type == "workload"
+    - packages != ""
+    - delete_cluster is false
+  delegate_to: localhost
+
+- name: Include cleanup task
+  ansible.builtin.import_tasks: cleanup.yml
+  tags: always
+  delegate_to: localhost

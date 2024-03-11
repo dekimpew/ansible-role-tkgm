@@ -1,0 +1,35 @@
+---
+- name: Check whether the management cluster already exists
+  ansible.builtin.wait_for:
+    port: 6443
+    timeout: 5
+    host: "{{ vsphere_control_plane_endpoint }}"
+    state: stopped
+  ignore_errors: true
+  register: mgmt_cluster_present
+
+- name: Management cluster creation block
+  when: mgmt_cluster_present is succeeded
+  block:
+    - name: Clean up old log files
+      ansible.builtin.file:
+        path: /tmp/{{ cluster_name }}.log
+        state: absent
+
+    - name: Template config file for mgmt cluster
+      ansible.builtin.template:
+        src: mgmt_cluster.yml.j2
+        dest: "{{ tempdir.path }}/{{ cluster_name }}.yml"
+        mode: "0644"
+
+    - name: Create mgmt cluster
+      ansible.builtin.command: tanzu mc create --file {{ tempdir.path }}/{{ cluster_name }}.yml --log-file /tmp/{{ cluster_name }}.log -v7
+
+    - name: Get management cluster admin kubeconfig
+      ansible.builtin.command: tanzu mc kubeconfig get --admin --export-file {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+
+  rescue:
+    - name: Remove the temporary working directory
+      ansible.builtin.file:
+        path: "{{ tempdir.path }}"
+        state: absent

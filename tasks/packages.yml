@@ -1,0 +1,55 @@
+---
+- name: Stat the mgmt cluster and workload cluster kubeconfig
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ kubeconfig_location }}/{{ mgmt_cluster_name }}.kubeconfig"
+    - "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+  register: cluster_kubeconfig_stat
+
+- name: Assert the cluster kubeconfigs exist
+  ansible.builtin.assert:
+    that: item.stat.exists is true
+    success_msg: "kubeconfig {{ item.item }} is present"
+    fail_msg: "kubeconfig {{ item.item }} is missing"
+    quiet: true
+  loop: "{{ cluster_kubeconfig_stat.results }}"
+
+- name: Make sure the packages namespace exist
+  kubernetes.core.k8s:
+    name: "{{ packages_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    kubeconfig: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+
+- name: Check whether the standard-repo already exists
+  ansible.builtin.command: tanzu package repository list -n tkg-system --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig -o json
+  register: tanzu_repo
+
+- name: Add airgapped standard repo to tanzu cli
+  when: 
+    - tanzu_repo.stdout | from_json | json_query(json_query) | join == ""
+    - tkg_custom_image_repository != None
+  ansible.builtin.command: tanzu package repository add tanzu-standard --url {{ tkg_custom_image_repository }}/packages/standard/repo:{{ tanzu_package_version }} -n tkg-system --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+  vars:
+    json_query: "[?name=='tanzu-standard'].name"
+
+- name: Add online standard repo to tanzu cli
+  when: 
+    - tanzu_repo.stdout | from_json | json_query(json_query) | join == ""
+    - tkg_custom_image_repository == None
+  ansible.builtin.command: tanzu package repository add tanzu-standard --url projects.registry.vmware.com/tkg/packages/standard/repo:{{ tanzu_package_version }} -n tkg-system --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+  vars:
+    json_query: "[?name=='tanzu-standard'].name"
+
+- name: Grab all packages from the cluster
+  ansible.builtin.command: kubectl get packages -n tkg-system -o json --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+  register: available_packages
+
+- name: Include packages deployment task
+  ansible.builtin.include_tasks: packages_deploy.yml
+  tags: ["tkg", "tkg_packages"]
+  when: 
+    - packages != ""
+  loop: "{{ packages }}"

@@ -1,0 +1,24 @@
+---
+- name: Check whether the workload cluster kubeconfig already exists
+  stat:
+    path: "{{ tempdir.path }}/{{ cluster_name }}-kubeconfig"
+  register: workload_cluster_kubeconfig
+  delegate_to: localhost
+
+- name: Deploy the standard clusterrolebinding configuration for admins
+  kubernetes.core.k8s:
+    apply: yes
+    state: present
+    template: clusterrolebinding.j2
+    kubeconfig: "{{ tempdir.path }}/{{ cluster_name }}-kubeconfig"
+  loop: "{{ default_cluster_rbac }}"
+  delegate_to: localhost
+
+- name: Deploy the clusterrolebinding configuration for end-users
+  kubernetes.core.k8s:
+    apply: yes
+    state: present
+    template: clusterrolebinding.j2
+    kubeconfig: "{{ tempdir.path }}/{{ cluster_name }}-kubeconfig"
+  loop: "{{ extra_cluster_rbac }}"
+  delegate_to: localhost

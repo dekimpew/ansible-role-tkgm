@@ -1,0 +1,100 @@
+CLUSTER_NAME: {{ cluster_name }}
+CLUSTER_PLAN: {{ cluster_plan }}
+OS_NAME: {{ os_name }}
+INFRASTRUCTURE_PROVIDER: vsphere
+ENABLE_CEIP_PARTICIPATION: false
+ENABLE_AUDIT_LOGGING: true
+CLUSTER_CIDR: {{ cluster_cidr }}
+SERVICE_CIDR: {{ service_cidr }}
+VSPHERE_SERVER: {{ vsphere_server }}
+VSPHERE_USERNAME: {{ vsphere_username }}
+VSPHERE_PASSWORD: {{ vsphere_password }}
+VSPHERE_DATACENTER: {{ vsphere_datacenter }}
+VSPHERE_RESOURCE_POOL: {{ vsphere_resource_pool }}
+VSPHERE_DATASTORE: {{ vsphere_datastore }}
+VSPHERE_FOLDER: {{ vsphere_folder }}
+VSPHERE_NETWORK: {{ vsphere_network }}
+VSPHERE_TLS_THUMBPRINT:  {{ vsphere_tls_thumbprint }}
+VSPHERE_INSECURE: {{ vsphere_insecure }}
+VSPHERE_SSH_AUTHORIZED_KEY: {{ vsphere_ssh_authorized_key }}
+VSPHERE_CONTROL_PLANE_ENDPOINT: {{ vsphere_control_plane_endpoint }}
+VSPHERE_CONTROL_PLANE_ENDPOINT_PORT: 6443
+CONTROL_PLANE_MACHINE_COUNT: {{ control_plane_machine_count }}
+VSPHERE_CONTROL_PLANE_NUM_CPUS: {{ vsphere_control_plane_num_cpus }}
+VSPHERE_CONTROL_PLANE_DISK_GIB: {{ vsphere_control_plane_disk_gib }}
+VSPHERE_CONTROL_PLANE_MEM_MIB: {{ vsphere_control_plane_mem_mib }}
+WORKER_MACHINE_COUNT: {{ worker_machine_count }}
+VSPHERE_WORKER_NUM_CPUS: {{ vsphere_worker_num_cpus }}
+VSPHERE_WORKER_DISK_GIB: {{ vsphere_worker_disk_gib }}
+VSPHERE_WORKER_MEM_MIB: {{ vsphere_worker_mem_mib }}
+DEPLOY_TKG_ON_VSPHERE7: true
+ENABLE_TKGS_ON_VSPHERE7: false
+ENABLE_MHC:
+ENABLE_MHC_CONTROL_PLANE: true
+ENABLE_MHC_WORKER_NODE: true
+MHC_UNKNOWN_STATUS_TIMEOUT: 5m
+MHC_FALSE_STATUS_TIMEOUT: 12m
+
+#! Airgapped settings
+#! ------------------
+{% if tkg_custom_image_repository -%}
+TKG_CUSTOM_IMAGE_REPOSITORY:  {{ tkg_custom_image_repository }}
+TKG_CUSTOM_IMAGE_REPOSITORY_CA_CERTIFICATE:  {{ tkg_custom_image_repository_ca_certificate }}
+TKG_CUSTOM_IMAGE_REPOSITORY_SKIP_TLS_VERIFY: {{ tkg_custom_image_repository_skip_tls_verify }}
+{% endif -%}
+
+#! LDAP/OIDC auth
+#! --------------
+{% if auth_enabled -%}
+IDENTITY_MANAGEMENT_TYPE: ldap
+LDAP_BIND_DN: {{ ldap_bind_dn }}
+LDAP_BIND_PASSWORD: {{ ldap_bind_password }}
+LDAP_HOST: {{ ldap_host }}
+LDAP_ROOT_CA_DATA_B64: {{ ldap_root_ca_data_b64 }}
+LDAP_GROUP_SEARCH_BASE_DN: {{ ldap_group_search_base_dn }}
+LDAP_GROUP_SEARCH_GROUP_ATTRIBUTE: member
+LDAP_GROUP_SEARCH_NAME_ATTRIBUTE: cn
+LDAP_GROUP_SEARCH_USER_ATTRIBUTE: distinguishedName
+LDAP_USER_SEARCH_BASE_DN: {{ ldap_search_base_dn}}
+LDAP_USER_SEARCH_NAME_ATTRIBUTE: sAMAccountName
+LDAP_USER_SEARCH_USERNAME: sAMAccountName
+LDAP_USER_SEARCH_ID_ATTRIBUTE: sAMAccountName
+{% else -%}
+IDENTITY_MANAGEMENT_TYPE: none
+{% endif -%}
+
+#! AVI Loadbalancer
+#! ----------------
+{% if avi_enabled -%}
+AVI_ENABLE: "true"
+AVI_CA_DATA_B64: {{ avi_ca_data_b64 }}
+AVI_CLOUD_NAME: {{ avi_cloud_name }}
+AVI_CONTROL_PLANE_HA_PROVIDER: "true"
+AVI_CONTROL_PLANE_NETWORK: {{ avi_control_plane_network }}
+AVI_CONTROL_PLANE_NETWORK_CIDR: {{ avi_control_plane_network_cidr }}
+AVI_CONTROLLER: {{ avi_controller }}
+AVI_DATA_NETWORK: {{ avi_data_network }}
+AVI_DATA_NETWORK_CIDR: {{ avi_data_network_cidr }}
+AVI_LABELS: {{ avi_labels }}
+AVI_MANAGEMENT_CLUSTER_CONTROL_PLANE_VIP_NETWORK_CIDR: {{ avi_management_cluster_control_plane_vip_network_cidr }}
+AVI_MANAGEMENT_CLUSTER_CONTROL_PLANE_VIP_NETWORK_NAME: {{ avi_management_cluster_control_plane_vip_network_name }}
+AVI_MANAGEMENT_CLUSTER_SERVICE_ENGINE_GROUP: {{ avi_management_cluster_service_engine_group }}
+AVI_MANAGEMENT_CLUSTER_VIP_NETWORK_CIDR: {{ avi_management_cluster_vip_network_cidr }}
+AVI_MANAGEMENT_CLUSTER_VIP_NETWORK_NAME: {{ avi_management_cluster_vip_network_name }}
+AVI_PASSWORD: {{ avi_password }}
+AVI_USERNAME: {{ avi_username }}
+AVI_SERVICE_ENGINE_GROUP: {{ avi_service_engine_group }}
+{% else -%}
+AVI_ENABLE: "false"
+AVI_CONTROL_PLANE_HA_PROVIDER: "false"
+{% endif -%}
+
+#! Node IPAM
+#! ---------
+{% if ipam_enabled -%}
+MANAGEMENT_NODE_IPAM_IP_POOL_GATEWAY: {{ ipam_ip_pool_gateway }}
+MANAGEMENT_NODE_IPAM_IP_POOL_ADDRESSES: {{ ipam_ip_pool_addresses|join(",") }}
+MANAGEMENT_NODE_IPAM_IP_POOL_SUBNET_PREFIX: {{ ipam_ip_pool_subnet_prefix }}
+CONTROL_PLANE_NODE_NAMESERVERS: {{ ipam_nameservers }}
+WORKER_NODE_NAMESERVERS: {{ ipam_nameservers }}
+{% endif -%}

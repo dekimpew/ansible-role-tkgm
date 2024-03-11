@@ -1,0 +1,15 @@
+---
+apiVersion: ipam.cluster.x-k8s.io/v1alpha2
+kind: {{ cluster_ipam_type }}
+metadata:
+  name: {{ cluster_name }}-ippool
+{% if 'InClusterIPPool' in  cluster_ipam_type %}
+  namespace: {{ cluster_namespace }}
+{% endif -%}
+spec:
+  prefix: {{ ipam_ip_pool_subnet_prefix }}
+  gateway: {{ ipam_ip_pool_gateway }}
+  addresses:
+  {% for pool in ipam_ip_pool_addresses -%}
+  - {{ pool }}
+  {%- endfor -%}

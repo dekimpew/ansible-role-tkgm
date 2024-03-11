@@ -1,0 +1,88 @@
+---
+# These are top-level meta variables. Changing one of them may require you to chance the others too. Always check the release notes and compat matrix for your TKGm version.
+tanzu_version: v2.5.0
+tanzu_cli_version: # Leave empty !
+tanzu_package_version: # Leave empty!
+current_tanzu_cli_version:  # Leave this one empty!
+
+kubeconfig_location: /tmp # A location on the filesystem to store kubeconfigs.
+default_binary_directory: /usr/local/bin # Change if your OS uses another directory.
+
+## Shared cluster vars
+cluster_type: #mgmt|workload
+cluster_name: "{{ inventory_hostname_short }}"
+cluster_plan: dev
+os_name: "ubuntu"
+cluster_cidr: "10.117.64.0/19"
+service_cidr: "10.117.96.0/19"
+vsphere_server:
+vsphere_username:
+vsphere_password:
+vsphere_datacenter: 
+vsphere_resource_pool: 
+vsphere_datastore: 
+vsphere_folder: 
+vsphere_network: 
+vsphere_tls_thumbprint: 
+vsphere_insecure: false
+vsphere_ssh_authorized_key:
+vsphere_control_plane_endpoint: "{{ inventory_hostname }}"
+control_plane_machine_count: 1
+vsphere_control_plane_num_cpus: 2
+vsphere_control_plane_disk_gib: 20
+vsphere_control_plane_mem_mib: 4096
+worker_machine_count: 1
+vsphere_worker_num_cpus: 2
+vsphere_worker_disk_gib: 20
+vsphere_worker_mem_mib: 4096
+tkg_custom_image_repository:
+tkg_custom_image_repository_skip_tls_verify: false
+tkg_custom_image_repository_ca_certificate: 
+ipam_enabled: false
+ipam_ip_pool_gateway:
+ipam_ip_pool_addresses: []
+ipam_ip_pool_subnet_prefix:
+ipam_nameservers: # Comma separated list
+delete_cluster: false
+
+# Mgmt cluster vars
+auth_enabled: false
+ldap_bind_dn:
+ldap_bind_password:
+ldap_group_search_base_dn: 
+ldap_host: 
+ldap_root_ca_data_b64:
+avi_enabled: false
+avi_ca_data_b64: 
+avi_cloud_name: 
+avi_control_plane_network: 
+avi_control_plane_network_cidr: 
+avi_controller: 
+avi_data_network: 
+avi_data_network_cidr: 
+avi_labels: 
+avi_management_cluster_control_plane_vip_network_cidr: 
+avi_management_cluster_control_plane_vip_network_name: 
+avi_management_cluster_service_engine_group: 
+avi_management_cluster_vip_network_cidr: 
+avi_management_cluster_vip_network_name: 
+avi_password:
+avi_username: 
+avi_service_engine_group: 
+
+# Workload cluster vars
+mgmt_cluster_name: ""
+kubevip_enabled: false
+kubevip_range: [] # List Format: 10.0.0.1-10.0.0.255
+cluster_namespace: "default"
+cluster_ipam_type: InClusterIPPool # Change to GlobalInClusterIPPool for a global pool
+
+# Packages vars
+packages_namespace: "kapp-packages"
+packages: []
+#  - name: cert-manager
+#    version: 
+#    values_file: False
+#  - name: contour
+#    version:
+#    values_file: True

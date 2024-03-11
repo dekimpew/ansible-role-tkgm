@@ -1,0 +1,32 @@
+---
+- name: Set the mgmt cluster kubeconfig location
+  ansible.builtin.set_fact: 
+    mgmt_cluster_kubeconfig_location: "{{ kubeconfig_location }}/{{ mgmt_cluster_name }}.kubeconfig"
+
+- name: Grab the mgmt cluster context from the tanzu cli
+  ansible.builtin.command: tanzu context get {{ mgmt_cluster_name }} -o json
+  register: mgmt_cluster_context
+  ignore_errors: true
+
+- name: Delete the mgmt cluster context if its present but not correct
+  when: mgmt_cluster_context.stdout | from_json | json_query('clusterOpts.path') != mgmt_cluster_kubeconfig_location
+  ansible.builtin.command: tanzu context delete {{ mgmt_cluster_name }} -y
+  register: delete_wrong_mgmt_cluster_context
+
+- name: Create the mgmt cluster context
+  when: mgmt_cluster_context.rc != 0 or delete_wrong_mgmt_cluster_context.changed
+  ansible.builtin.command: tanzu context create {{ mgmt_cluster_name }} --kubeconfig {{ mgmt_cluster_kubeconfig_location }} --kubecontext {{ mgmt_cluster_name }}-admin@{{ mgmt_cluster_name }}
+
+- name: Include workload cluster creation task
+  ansible.builtin.import_tasks: workload_cluster_create.yml
+  tags: ["tkg", "tkg_workload"]
+  when: 
+    - delete_cluster is false
+  delegate_to: localhost
+
+- name: Include workload cluster deletion task
+  ansible.builtin.import_tasks: workload_cluster_delete.yml
+  tags: ["tkg", "tkg_workload"]
+  when: 
+    - delete_cluster is true
+  delegate_to: localhost
