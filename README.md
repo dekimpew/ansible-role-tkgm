@@ -12,7 +12,6 @@ _Important:_ This role is best effort and is not officially backed by VMware by 
 
 ## Limitations
 - If you deploy an airgapped instance, this role assumes you already have all images and tanzu plugins in the local repository.
-- Currently the role only supports LDAPS and not OIDC (coming soon).
 - Upgrading clusters is not possible yet.
 - The role assumes you are running this on a host that is able to reach all cluster networks. ie: The tanzu jumpbox/ admin mgmt server.
 
