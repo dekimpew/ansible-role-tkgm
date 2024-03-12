@@ -99,4 +99,12 @@ Lastly, create your playbook file:
 
 ## Running the playbook
 Once all variables have been set, you can run the playbook against your clusters.  
-``` ansible-playbook tkg.yaml -l mgmt-cluster-1.mylab.local```
+``` 
+ansible-playbook tkg.yaml -l mgmt-cluster-1.mylab.local
+```
+
+## Deleting a cluster
+Deleting a cluster can be done by either setting the ```delete_cluster``` variable to true in the host vars, or pass it with an extra var during playbook execution:
+```
+ansible-playbook tkg.yaml -l workload-cluster-1.mylab.local -e '{"delete_cluster": true}'
+```
