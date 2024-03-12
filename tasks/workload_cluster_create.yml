@@ -45,12 +45,17 @@
 
 - name: Cluster kubeconfig block
   block:
-  - name: Grab the workload cluster kubeconfig from the mgmt cluster
+  - name: Grab the workload cluster admin kubeconfig and external auth state from the mgmt cluster
     ansible.builtin.set_fact:
       workload_cluster_kubeconfig: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, kind='Secret',namespace=cluster_namespace, resource_name=cluster_name + '-kubeconfig' )|json_query('[0].data.value') }}"
+      mgmt_cluster_is_extauth_enabled: "{{ query('kubernetes.core.k8s', kubeconfig=mgmt_cluster_kubeconfig_location, kind='Deployment',namespace='pinniped-supervisor', resource_name='pinniped-supervisor' )|json_query('[0].metadata.name') }}"
 
-  - name: Write cluster kubeconfig to the kubeconfig dir
+  - name: Write cluster admin kubeconfig to the kubeconfig dir
     ansible.builtin.copy: 
       content: "{{ workload_cluster_kubeconfig |b64decode }}"
       dest: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
       mode: '0644'
+  
+  - name: Grab the workload cluster OIDC/LDAP enabled kubeconfig
+    when: mgmt_cluster_is_extauth_enabled != ""
+    ansible.builtin.command: tanzu cluster kubeconfig get {{ cluster_name }} -n {{ cluster_namespace }} --export-file {{ kubeconfig_location }}/{{ cluster_name }}-extauth.kubeconfig

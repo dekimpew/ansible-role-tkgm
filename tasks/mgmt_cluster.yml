@@ -27,8 +27,12 @@
     - name: Create mgmt cluster
       ansible.builtin.command: tanzu mc create --file {{ tempdir.path }}/{{ cluster_name }}.yml --log-file /tmp/{{ cluster_name }}.log -v7
 
-    - name: Get management cluster admin kubeconfig
+    - name: Get mgmt cluster admin kubeconfig
       ansible.builtin.command: tanzu mc kubeconfig get --admin --export-file {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+
+    - name: Get the mgmt cluster OIDC/LDAP enabled kubeconfig
+      when: identity_mgmt_type != "none"
+      ansible.builtin.command: tanzu mc kubeconfig get --export-file {{ kubeconfig_location }}/{{ cluster_name }}-extauth.kubeconfig
 
   rescue:
     - name: Remove the temporary working directory

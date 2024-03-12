@@ -82,7 +82,6 @@ The following variables are specifically for management clusters. This is mostly
 See the TKG documentation for details on these variables: 
 ```yaml
 # Mgmt cluster vars
-auth_enabled: false
 ldap_bind_dn:
 ldap_bind_password:
 ldap_group_search_base_dn: 

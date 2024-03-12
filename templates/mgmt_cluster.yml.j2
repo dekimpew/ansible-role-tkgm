@@ -45,8 +45,8 @@ TKG_CUSTOM_IMAGE_REPOSITORY_SKIP_TLS_VERIFY: {{ tkg_custom_image_repository_skip
 
 #! LDAP/OIDC auth
 #! --------------
-{% if auth_enabled -%}
-IDENTITY_MANAGEMENT_TYPE: ldap
+IDENTITY_MANAGEMENT_TYPE: {{ identity_mgmt_type }}
+{% if identity_mgmt_type == "ldap" -%}
 LDAP_BIND_DN: {{ ldap_bind_dn }}
 LDAP_BIND_PASSWORD: {{ ldap_bind_password }}
 LDAP_HOST: {{ ldap_host }}
@@ -59,8 +59,14 @@ LDAP_USER_SEARCH_BASE_DN: {{ ldap_search_base_dn}}
 LDAP_USER_SEARCH_NAME_ATTRIBUTE: sAMAccountName
 LDAP_USER_SEARCH_USERNAME: sAMAccountName
 LDAP_USER_SEARCH_ID_ATTRIBUTE: sAMAccountName
-{% else -%}
-IDENTITY_MANAGEMENT_TYPE: none
+{% elif identity_mgmt_type == "oidc" -%}
+OIDC_IDENTITY_PROVIDER_CLIENT_ID: {{ oidc_identity_provider_client_id }}
+OIDC_IDENTITY_PROVIDER_CLIENT_SECRET: {{ oidc_identity_provider_client_secret }}
+OIDC_IDENTITY_PROVIDER_GROUPS_CLAIM: {{ oidc_identity_provider_groups_claim }}
+OIDC_IDENTITY_PROVIDER_ISSUER_URL: {{ oidc_identity_provider_issuer_url }}
+OIDC_IDENTITY_PROVIDER_SCOPES: {{ oidc_identity_provider_scopes }}
+OIDC_IDENTITY_PROVIDER_USERNAME_CLAIM: {{ oidc_identity_provider_username_claim }}
+OIDC_IDENTITY_PROVIDER_CA_BUNDLE_DATA_B64: {{ oidc_identity_provider_ca_bundle_data_b64 }}
 {% endif -%}
 
 #! AVI Loadbalancer
