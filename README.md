@@ -86,6 +86,15 @@ ldap_bind_password:
 ldap_group_search_base_dn: 
 ldap_host: 
 ldap_root_ca_data_b64:
+
+oidc_identity_provider_client_id: 
+oidc_identity_provider_client_secret: 
+oidc_identity_provider_groups_claim: 
+oidc_identity_provider_issuer_url: 
+oidc_identity_provider_scopes: 
+oidc_identity_provider_username_claim: 
+oidc_identity_provider_ca_bundle_data_b64: 
+
 avi_enabled: false
 avi_ca_data_b64: 
 avi_cloud_name: 

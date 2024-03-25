@@ -14,8 +14,8 @@ cluster_type: #mgmt|workload
 cluster_name: "{{ inventory_hostname_short }}"
 cluster_plan: dev
 os_name: "ubuntu"
-cluster_cidr: "10.117.64.0/19"
-service_cidr: "10.117.96.0/19"
+cluster_cidr: "100.96.0.0/11"
+service_cidr: "100.64.0.0/13"
 vsphere_server:
 vsphere_username:
 vsphere_password:
