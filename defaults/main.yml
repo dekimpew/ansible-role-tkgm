@@ -4,6 +4,7 @@ tanzu_version: v2.5.0
 tanzu_cli_version: # Leave empty !
 tanzu_package_version: # Leave empty!
 current_tanzu_cli_version:  # Leave this one empty!
+tanzu_cli_plugin_repository: 
 
 kubeconfig_location: /tmp # A location on the filesystem to store kubeconfigs.
 default_binary_directory: /usr/local/bin # Change if your OS uses another directory.

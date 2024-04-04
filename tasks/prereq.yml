@@ -147,7 +147,8 @@
         json_query: "[?host=='{{ tkg_custom_image_repository.split('/')[0] }}'].host"
 
     - name: Update the plugin source for tanzu plugins
-      ansible.builtin.command: "tanzu plugin source update default --uri {{ tkg_custom_image_repository.split('/')[0] }}/tanzu_cli/plugin-inventory:latest"
+      when: tanzu_cli_plugin_repository != None
+      ansible.builtin.command: "tanzu plugin source update default --uri {{ tanzu_cli_plugin_repository }}/plugin-inventory:latest"
 
     - name: Set custom repo in tanzu cli
       ansible.builtin.command: tanzu config set env.TKG_CUSTOM_IMAGE_REPOSITORY {{ tkg_custom_image_repository }}
