@@ -1,0 +1,49 @@
+- name: Management cluster deletion block
+  block:
+    - name: Set the mgmt cluster kubeconfig location
+      ansible.builtin.set_fact: 
+        mgmt_cluster_kubeconfig_location: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+        
+    - name: Grab the mgmt cluster context from the tanzu cli
+      ansible.builtin.command: tanzu context get {{ cluster_name }} -o json
+      register: mgmt_cluster_context
+      ignore_errors: true
+
+    - name: Delete the mgmt cluster context if its present but not correct
+      when: 
+        - mgmt_cluster_context.stdout | from_json | json_query('clusterOpts.path') != mgmt_cluster_kubeconfig_location
+        - mgmt_cluster_context.rc == 0
+      ansible.builtin.command: tanzu context delete {{ cluster_name }} -y
+      register: delete_wrong_mgmt_cluster_context
+      ignore_errors: true
+
+    - name: Create the mgmt cluster context
+      when: mgmt_cluster_context.rc != 0 or delete_wrong_mgmt_cluster_context.changed
+      ansible.builtin.command: tanzu context create {{ cluster_name }} --kubeconfig {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig --kubecontext {{ cluster_name }}-admin@{{ cluster_name }}
+
+    - name: Delete the mgmt cluster
+      ansible.builtin.command: tanzu mc delete -y
+
+    - name: Wait for the mgmt cluster API to go offline
+      ansible.builtin.wait_for:
+        port: 6443
+        timeout: 5
+        host: "{{ vsphere_control_plane_endpoint }}"
+        state: stopped
+  
+    - name: Remove the mgmt cluster kubeconfig
+      ansible.builtin.file:
+        path: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+        state: absent
+
+    - name: Remove the mgmt cluster OIDC/LDAP enabled kubeconfig
+      when: identity_mgmt_type != "none"
+      ansible.builtin.file:
+        path: "{{ kubeconfig_location }}/{{ cluster_name }}-extauth.kubeconfig"
+        state: absent
+
+  rescue:
+  - name: Remove the temporary working directory
+    ansible.builtin.file:
+      path: "{{ tempdir.path }}"
+      state: absent

@@ -1,0 +1,42 @@
+---
+- name: Management cluster creation block
+  block:
+    - name: Clean up old log files
+      ansible.builtin.file:
+        path: /tmp/{{ cluster_name }}.log
+        state: absent
+
+    - name: Template config file for mgmt cluster
+      ansible.builtin.template:
+        src: mgmt_cluster.yml.j2
+        dest: "{{ tempdir.path }}/{{ cluster_name }}.yml"
+        mode: "0644"
+
+    - name: Create mgmt cluster
+      ansible.builtin.command: tanzu mc create --file {{ tempdir.path }}/{{ cluster_name }}.yml --log-file /tmp/{{ cluster_name }}.log -v7
+
+    - name: Get mgmt cluster admin kubeconfig
+      ansible.builtin.command: tanzu mc kubeconfig get --admin --export-file {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
+
+    - name: Let pinniped-post-deploy-job complete before grabbing the OIDC/LDAP enabled kubeconfig
+      kubernetes.core.k8s:
+        api_version: "batch/v1"
+        kind: job
+        namespace: "pinniped-supervisor"
+        name: "pinniped-post-deploy-job"
+        kubeconfig: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
+        wait: yes
+        wait_timeout: 120
+        wait_condition:
+          type: Complete
+          status: True
+
+    - name: Get the mgmt cluster OIDC/LDAP enabled kubeconfig
+      when: identity_mgmt_type != "none"
+      ansible.builtin.command: tanzu mc kubeconfig get --export-file {{ kubeconfig_location }}/{{ cluster_name }}-extauth.kubeconfig
+
+  rescue:
+    - name: Remove the temporary working directory
+      ansible.builtin.file:
+        path: "{{ tempdir.path }}"
+        state: absent

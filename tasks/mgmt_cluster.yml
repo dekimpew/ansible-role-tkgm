@@ -4,64 +4,22 @@
     port: 6443
     timeout: 5
     host: "{{ vsphere_control_plane_endpoint }}"
-    state: stopped
+    state: started
   ignore_errors: true
-  register: mgmt_cluster_presence
+  register: mgmt_cluster_is_present
 
-- name: Management cluster creation block
+- name: Include mgmt cluster creation task
+  ansible.builtin.import_tasks: mgmt_cluster_create.yml
+  tags: ["tkg", "tkg_mgmt"]
   when: 
-    - mgmt_cluster_presence is succeeded
+    - mgmt_cluster_is_present is failed
     - delete_cluster is false
-  block:
-    - name: Clean up old log files
-      ansible.builtin.file:
-        path: /tmp/{{ cluster_name }}.log
-        state: absent
+  delegate_to: localhost
 
-    - name: Template config file for mgmt cluster
-      ansible.builtin.template:
-        src: mgmt_cluster.yml.j2
-        dest: "{{ tempdir.path }}/{{ cluster_name }}.yml"
-        mode: "0644"
-
-    - name: Create mgmt cluster
-      ansible.builtin.command: tanzu mc create --file {{ tempdir.path }}/{{ cluster_name }}.yml --log-file /tmp/{{ cluster_name }}.log -v7
-
-    - name: Get mgmt cluster admin kubeconfig
-      ansible.builtin.command: tanzu mc kubeconfig get --admin --export-file {{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig
-
-    - name: Get the mgmt cluster OIDC/LDAP enabled kubeconfig
-      when: identity_mgmt_type != "none"
-      ansible.builtin.command: tanzu mc kubeconfig get --export-file {{ kubeconfig_location }}/{{ cluster_name }}-extauth.kubeconfig
-
-  rescue:
-    - name: Remove the temporary working directory
-      ansible.builtin.file:
-        path: "{{ tempdir.path }}"
-        state: absent
-
-- name: Management cluster deletion block
-  when:
-    - mgmt_cluster_presence is failed
+- name: Include mgmt cluster deletion task
+  ansible.builtin.import_tasks: mgmt_cluster_delete.yml
+  tags: ["tkg", "tkg_mgmt"]
+  when: 
+    - mgmt_cluster_is_present is succeeded
     - delete_cluster is true
-  block:
-    - name: Delete the mgmt cluster
-      ansible.builtin.command: tanzu mc delete -y
-
-    - name: Wait for the mgmt cluster API to go offline
-      ansible.builtin.wait_for:
-        port: 6443
-        timeout: 5
-        host: "{{ vsphere_control_plane_endpoint }}"
-        state: stopped
-  
-    - name: Remove the mgmt cluster kubeconfig
-      ansible.builtin.file:
-        path: "{{ kubeconfig_location }}/{{ cluster_name }}.kubeconfig"
-        state: absent
-
-  rescue:
-  - name: Remove the temporary working directory
-    ansible.builtin.file:
-      path: "{{ tempdir.path }}"
-      state: absent
+  delegate_to: localhost

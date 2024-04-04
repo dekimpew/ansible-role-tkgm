@@ -33,6 +33,9 @@ Most of these variables are directly linked to the TKG configuration variables f
 tanzu_version: v2.5.0 # Check the Release notes for correct versions.
 tanzu_cli_version: # This is automatically filled in from the version matrix in the vars directory.
 package_version:  # This is automatically filled in from the version matrix in the vars directory.
+current_tanzu_cli_version:  # Leave this one empty! It's automatically filled in.
+tanzu_cli_plugin_repository: # This allows you to provide a separate airgapped location for Tanzu CLI plugins
+
 kubeconfig_location: /tmp # A location on the filesystem to store kubeconfigs.
 default_binary_directory: /usr/local/bin # Change if your OS uses another directory.
 ```
@@ -45,8 +48,8 @@ cluster_type: # is either: mgmt|workload
 cluster_name: "{{ inventory_hostname_short }}" # the cluster FQDN in your hosts file.
 cluster_plan: dev # Either dev (1CP, 1 worker) or prod (3 CP, 3 workers ).
 os_name: "ubuntu" # Either ubuntu or photon.
-cluster_cidr: "10.117.64.0/19" # Default k8s cidrs, change if these already exist in your environment.
-service_cidr: "10.117.96.0/19" # Default k8s cidrs, change if these already exist in your environment.
+cluster_cidr: "100.96.0.0/11" # Default k8s cidrs, change if these already exist in your environment.
+service_cidr: "100.64.0.0/13" # Default k8s cidrs, change if these already exist in your environment.
 vsphere_server: # FQDN of your vcenter server.
 vsphere_username: # vCenter username.
 vsphere_password: # vCenter user password.
@@ -81,6 +84,7 @@ The following variables are specifically for management clusters. This is mostly
 See the TKG documentation for details on these variables: 
 ```yaml
 # Mgmt cluster vars
+identity_mgmt_type: none # Must either be none for no external auth or ldap or oidc for external pinniped-enabled auth.
 ldap_bind_dn:
 ldap_bind_password:
 ldap_group_search_base_dn: 
